@@ -1,0 +1,14 @@
+{
+  "_note": "Shortened example in the shape of an openFDA label record, for offline tests only.",
+  "id": "sample-ibuprofen-0001",
+  "openfda": {
+    "brand_name": ["Advil"],
+    "generic_name": ["IBUPROFEN"],
+    "manufacturer_name": ["Example Pharma"]
+  },
+  "purpose": ["Purpose Pain reliever/fever reducer"],
+  "indications_and_usage": ["Uses temporarily relieves minor aches and pains due to headache, toothache, backache, menstrual cramps, the common cold, muscular aches, minor pain of arthritis; temporarily reduces fever"],
+  "warnings": ["Warnings Allergy alert: Ibuprofen may cause a severe allergic reaction. Stomach bleeding warning: This product contains an NSAID, which may cause severe stomach bleeding."],
+  "ask_doctor_or_pharmacist": ["Ask a doctor or pharmacist before use if you are taking aspirin for heart attack or stroke, because ibuprofen may decrease this benefit of aspirin"],
+  "dosage_and_administration": ["Directions do not take more than directed; adults and children 12 years and over: take 1 tablet every 4 to 6 hours while symptoms persist"]
+}
