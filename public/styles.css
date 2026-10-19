@@ -1,0 +1,78 @@
+/* Layout: one narrow column; the result is styled after the black-ruled "Drug Facts" panel on US medicine boxes */
+:root{
+  --bg:#f5f7f6; --surface:#fff; --ink:#111a18; --muted:#5a6966; --line:#d3dcda; --rule:#111a18;
+  --accent:#0f5c4d; --accent-ink:#fff; --accent-soft:#e0efea; --danger:#b42318; --danger-soft:#fdecea;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif; --f-body:"Public Sans","Segoe UI",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0d1312; --surface:#151d1c; --ink:#e6eeec; --muted:#9aaaa7; --line:#2a3634; --rule:#cfdcd9;
+  --accent:#5fc9ae; --accent-ink:#06211b; --accent-soft:#16312b; --danger:#ff8a7a; --danger-soft:#3a1c18; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--f-body);-webkit-text-size-adjust:100%}
+.wrap{max-width:40rem;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+h1,h2,h3{font-family:var(--f-display);line-height:1.15;text-wrap:balance;margin:0}
+a{color:var(--accent)}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.muted{color:var(--muted)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.top{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
+.top-inner{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:10px}
+.brand{display:flex;align-items:center;gap:8px;font:800 1.15rem var(--f-display);color:var(--ink);text-decoration:none}
+.lang select{font:600 .9rem var(--f-body);padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);max-width:11rem}
+
+main{display:flex;flex-direction:column;gap:16px;padding-block:24px 32px}
+.intro{display:flex;flex-direction:column;gap:6px}
+.intro h1{font-size:clamp(1.6rem,6vw,2.2rem);font-weight:800;letter-spacing:-.01em}
+.intro p{color:var(--muted);margin:0}
+
+.search{display:flex;gap:8px}
+.search input{flex:1;min-width:0;font:400 1rem var(--f-body);padding:14px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
+.search input:focus{border-color:var(--accent);outline:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:700 1rem var(--f-display);padding:12px 18px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;min-height:48px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.55;cursor:wait}
+.btn.scan{width:100%;border-style:dashed;border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+
+.status{margin:0;padding:12px 14px;border-radius:10px;background:var(--surface);border:1px solid var(--line)}
+.status.error{background:var(--danger-soft);border-color:var(--danger);color:var(--danger)}
+.status.loading::before{content:"";display:inline-block;width:14px;height:14px;margin-right:10px;vertical-align:-2px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.status.loading::before{animation:none}}
+
+.facts{background:var(--surface);border:3px solid var(--rule);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.facts-head{border-bottom:8px solid var(--rule);padding-bottom:10px}
+.facts-kicker{margin:0 0 2px;font:800 .8rem var(--f-display);text-transform:uppercase;letter-spacing:.08em}
+.facts-head h2{font-size:1.8rem;font-weight:800}
+.facts-meta{margin:4px 0 0;color:var(--muted);font-size:.9rem}
+.boxed{border:2px solid var(--danger);background:var(--danger-soft);color:var(--ink);padding:12px;border-radius:4px;font-size:.95rem}
+.boxed strong{color:var(--danger);display:block;font-family:var(--f-display);margin-bottom:4px}
+.explanation{display:flex;flex-direction:column;gap:2px}
+.explanation h2,.explanation h3{font-size:1.05rem;font-weight:800;padding-top:10px;margin-top:6px;border-top:1px solid var(--rule)}
+.explanation h2:first-child,.explanation h3:first-child{border-top:0;margin-top:0;padding-top:0}
+.explanation p,.explanation ul{margin:4px 0}
+.explanation ul{padding-left:1.2rem}
+.facts-actions{display:flex;flex-wrap:wrap;gap:8px}
+.official{border-top:1px solid var(--line);padding-top:10px}
+.official summary{cursor:pointer;font-weight:600;color:var(--accent)}
+.official h4{margin:12px 0 2px;font:700 .85rem var(--f-display);text-transform:uppercase;letter-spacing:.05em}
+.official p{margin:0;font-size:.9rem;color:var(--muted)}
+
+.meds{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.meds-head{display:flex;align-items:center;gap:8px}
+.meds-head h2{font-size:1.3rem;font-weight:800}
+.count{font:700 .8rem var(--f-display);background:var(--accent-soft);color:var(--accent);padding:2px 8px;border-radius:99px}
+.meds p{margin:0}
+#meds-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+#meds-list li{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 6px 6px 14px}
+#meds-list li button{min-height:40px;padding:8px 12px;font-size:.9rem}
+#meds-list .name{background:none;border:0;padding:0;font:600 1rem var(--f-body);color:var(--ink);cursor:pointer;text-align:left;min-width:0;overflow-wrap:anywhere}
+#interactions{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+
+.foot{padding-block:8px calc(32px + env(safe-area-inset-bottom));font-size:.85rem;color:var(--muted)}
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);padding:20px;max-width:min(24rem,calc(100vw - 32px))}
+dialog::backdrop{background:rgb(0 0 0 / .45)}
+dialog form{display:flex;flex-direction:column;gap:10px}
+dialog input{font:400 1rem var(--f-body);padding:12px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)}

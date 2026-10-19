@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Label Lens</title>
+<meta name="description" content="Official FDA medicine labels, explained in plain language.">
+<meta name="theme-color" content="#0f5c4d">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Public+Sans:wght@400;600&display=swap">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-inner">
+    <a class="brand" href="/"><img src="/icon.svg" alt="" width="28" height="28"> Label Lens</a>
+    <label class="lang">
+      <span class="sr-only">Explain in</span>
+      <select id="language" aria-label="Language for explanations"></select>
+    </label>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="intro">
+    <h1>Understand your medicine label</h1>
+    <p>Type a medicine name or scan the box. You'll get the official FDA label, explained in plain language.</p>
+  </section>
+
+  <form id="search" class="search" autocomplete="off">
+    <label for="query" class="sr-only">Medicine name</label>
+    <input id="query" name="query" type="search" placeholder="e.g. Advil, ibuprofen, metformin" maxlength="100" required>
+    <button type="submit" class="btn primary">Look up</button>
+  </form>
+
+  <label class="btn scan" for="photo">
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M9 3 7.2 5H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.2L15 3H9Zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+    Scan a medicine box
+  </label>
+  <input id="photo" type="file" accept="image/*" capture="environment" hidden>
+
+  <p id="status" class="status" role="status" aria-live="polite" hidden></p>
+
+  <article id="result" class="facts" hidden>
+    <header class="facts-head">
+      <p class="facts-kicker">Drug Facts, explained</p>
+      <h2 id="drug-name"></h2>
+      <p id="drug-meta" class="facts-meta"></p>
+    </header>
+    <div id="boxed" class="boxed" hidden></div>
+    <div id="explanation" class="explanation"></div>
+    <div class="facts-actions">
+      <button id="add-med" class="btn" type="button">Add to my medicines</button>
+    </div>
+    <details class="official">
+      <summary>Read the official label text</summary>
+      <div id="official"></div>
+    </details>
+  </article>
+
+  <section class="meds" aria-labelledby="meds-title">
+    <div class="meds-head">
+      <h2 id="meds-title">My medicines</h2>
+      <span id="meds-count" class="count">0</span>
+    </div>
+    <p id="meds-empty" class="muted">Medicines you add show up here, saved on this device only. Add two or more to check whether their labels warn about taking them together.</p>
+    <ul id="meds-list"></ul>
+    <button id="check" class="btn primary" type="button" hidden>Check my medicines together</button>
+    <div id="interactions" class="explanation" hidden></div>
+  </section>
+</main>
+
+<footer class="wrap foot">
+  <p>Label Lens summarizes official FDA labels from <a href="https://open.fda.gov" target="_blank" rel="noopener">openFDA</a>. It isn't medical advice. Always check with a pharmacist or doctor.</p>
+</footer>
+
+<dialog id="access">
+  <form method="dialog" id="access-form">
+    <h2>Enter access code</h2>
+    <p class="muted">This site's AI features are limited to people with the code.</p>
+    <label for="access-code" class="sr-only">Access code</label>
+    <input id="access-code" type="password" required>
+    <button class="btn primary" type="submit">Continue</button>
+  </form>
+</dialog>
+
+<script src="/vendor/marked.min.js"></script>
+<script src="/vendor/purify.min.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

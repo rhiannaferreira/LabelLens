@@ -1,0 +1,9 @@
+[project]
+name = "label-lens"
+version = "0.2.0"
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=1.15",
+    "requests>=2.31",
+    "fastapi>=0.117",
+]

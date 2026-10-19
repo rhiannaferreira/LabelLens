@@ -3,31 +3,34 @@
 Type a medicine name or upload a photo of the box, and get its official FDA label explained
 in plain language, in the language you choose.
 
-## Setup
+## Use it
+
+Open the website on your phone or laptop, and type a medicine name or tap **Scan a medicine box**.
+
+- The official FDA label, explained in plain language in any of 11 languages, with the
+  original text underneath.
+- A boxed warning, the FDA's strongest warning, shown in red at the top.
+- **My medicines**: a list saved on your device. Check two or more against each other's labels
+  for warnings about taking them together.
+
+## Run it on your computer
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-export ANTHROPIC_API_KEY=sk-ant-...   # your Anthropic API key
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+export ANTHROPIC_API_KEY=sk-ant-...
+uvicorn app:app --reload
 ```
 
-The openFDA API needs no key for light use (about 1,000 requests a day per IP address).
+Then open http://localhost:8000.
 
-## Run the app
+## Deploy on Vercel
 
-```bash
-streamlit run app.py
-```
-
-It opens in your browser at http://localhost:8501. You can:
-
-- **Look up a medicine** by typing its name, or by uploading a photo of the box or bottle.
-- **Read the explanation** in any of 11 languages, with the official label text underneath.
-- **Add medicines to your list**, then check them together for warnings their labels give
-  about combining them. The list is saved in `my_medicines.json` on your computer.
-
-Photos must be JPG, PNG or WEBP. On iPhone, set Camera › Formats to "Most Compatible", or take a
-screenshot of the photo.
+1. Import this repo into Vercel. It's detected as a FastAPI app, and the website in `public/`
+   is served alongside it.
+2. In **Settings › Environment Variables**, add `ANTHROPIC_API_KEY`.
+3. Optional: add `APP_ACCESS_CODE`. Visitors then need the code to use the AI features, so
+   strangers can't spend your API credit. Label lookups stay open.
 
 ## Command line
 
@@ -35,12 +38,13 @@ screenshot of the photo.
 python lookup.py ibuprofen                        # print the official label
 python lookup.py Zyrtec --explain                 # plain-language explanation
 python lookup.py metformin --explain --language Spanish
-pytest                                            # run the tests (offline)
+pytest                                            # run the tests (needs requirements-dev.txt)
 ```
 
 ## How it's organized
 
-- `app.py`: the web app (Streamlit).
+- `app.py`: the web API (FastAPI) that the website calls.
+- `public/`: the website (HTML, CSS and JavaScript).
 - `label_lens/fda.py`: finds a drug's label on openFDA by brand name, then generic name, and
   pulls out the readable sections. It covers both prescription and over-the-counter label fields.
 - `label_lens/explain.py`: plain-language explanations and the medicine-list check. Both are
@@ -55,7 +59,7 @@ pytest                                            # run the tests (offline)
 - [x] Explain the label in plain language, in other languages
 - [x] Read the drug name from a photo of the box
 - [x] "My medicines" list with a combined label check
-- [x] Web app
+- [x] Website, deployable on Vercel
 - [ ] Screenshots in this README, a 1-minute demo video
 
 ## Ideas once it works

@@ -1,131 +1,133 @@
-"""Label Lens web app. Run with:  streamlit run app.py"""
+"""Label Lens web API. The website in public/ calls these routes.
 
-import json
+Run locally:  uvicorn app:app --reload   then open http://localhost:8000
+"""
+
+import base64
+import binascii
+import os
+from functools import lru_cache
 from pathlib import Path
 
-import streamlit as st
+from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
 from label_lens.explain import check_interactions, display_name, explain_label
 from label_lens.fda import DrugNotFound, label_info, search_label
 from label_lens.vision import read_packaging
 
-MEDS_FILE = Path(__file__).parent / "my_medicines.json"
-LANGUAGES = ["English", "Spanish", "Chinese (Simplified)", "Vietnamese", "Tagalog", "Korean",
-             "Portuguese", "Hindi", "Arabic", "French", "Russian"]
+PUBLIC = Path(__file__).parent / "public"
+MAX_IMAGE_BYTES = 3_000_000  # Vercel caps request bodies at 4.5 MB; base64 adds a third
+LANGUAGES = {"English", "Spanish", "Chinese (Simplified)", "Vietnamese", "Tagalog", "Korean",
+             "Portuguese", "Hindi", "Arabic", "French", "Russian"}
 
-st.set_page_config(page_title="Label Lens", page_icon="💊", layout="centered")
+app = FastAPI(title="Label Lens")
 
 
-@st.cache_data(show_spinner=False, ttl=24 * 3600)
+def check_access(x_access_code: str | None = Header(default=None)) -> None:
+    """If APP_ACCESS_CODE is set, the AI routes need it, so strangers can't spend your API credit."""
+    expected = os.environ.get("APP_ACCESS_CODE")
+    if expected and x_access_code != expected:
+        raise HTTPException(401, "Enter the access code to use the AI features.")
+
+
+@lru_cache(maxsize=256)
 def get_info(name: str) -> dict:
     return label_info(search_label(name))
 
 
-@st.cache_data(show_spinner=False)
-def get_explanation(name: str, language: str) -> str:
-    return explain_label(get_info(name), language=language)
-
-
-def load_meds() -> list[str]:
+def lookup(name: str) -> dict:
+    name = name.strip()
+    if not name:
+        raise HTTPException(400, "Enter a medicine name.")
     try:
-        return json.loads(MEDS_FILE.read_text())
-    except (FileNotFoundError, json.JSONDecodeError):
-        return []
+        return get_info(name.lower())
+    except DrugNotFound:
+        raise HTTPException(404, f"No FDA label found for “{name}”. Check the spelling or try the generic name.")
+    except Exception:
+        raise HTTPException(502, "Couldn't reach the FDA label service. Try again in a moment.")
 
 
-def save_meds(meds: list[str]) -> None:
-    MEDS_FILE.write_text(json.dumps(meds, indent=2))
+def check_language(language: str) -> str:
+    if language not in LANGUAGES:
+        raise HTTPException(400, "Unsupported language.")
+    return language
 
 
-if "meds" not in st.session_state:
-    st.session_state.meds = load_meds()
-if "current" not in st.session_state:
-    st.session_state.current = None
+class ExplainRequest(BaseModel):
+    name: str = Field(max_length=100)
+    language: str = "English"
 
-st.title("Label Lens")
-st.caption("Official FDA medicine labels, explained in plain language.")
 
-language = st.selectbox("Explain in", LANGUAGES, key="language")
+class PhotoRequest(BaseModel):
+    image: str  # base64-encoded image
+    media_type: str = "image/jpeg"
 
-look_up, my_meds = st.tabs(["Look up a medicine", f"My medicines ({len(st.session_state.meds)})"])
 
-with look_up:
-    typed, photo = st.columns(2)
-    with typed:
-        with st.form("search"):
-            query = st.text_input("Medicine name", placeholder="e.g. Advil or ibuprofen", key="query")
-            if st.form_submit_button("Look up", use_container_width=True) and query.strip():
-                st.session_state.current = query.strip()
-    with photo:
-        upload = st.file_uploader("Or upload a photo of the box", type=["jpg", "jpeg", "png", "webp"], key="photo")
-        if upload and st.button("Read photo", use_container_width=True):
-            with st.spinner("Reading the packaging..."):
-                try:
-                    found = read_packaging(upload.getvalue(), upload.type)
-                except Exception as e:
-                    st.error(f"Couldn't read the photo: {e}")
-                    found = None
-            if found and found["found"]:
-                st.success(f"Found {found['name']} {found['strength']}".strip())
-                st.session_state.current = found["name"] or found["active_ingredient"]
-            elif found is not None:
-                st.warning("Couldn't make out a medicine name. Try a sharper photo of the front of the box.")
+class InteractionsRequest(BaseModel):
+    names: list[str] = Field(min_length=2, max_length=10)
+    language: str = "English"
 
-    name = st.session_state.current
-    if name:
-        try:
-            with st.spinner(f"Finding the FDA label for {name}..."):
-                info = get_info(name)
-        except DrugNotFound:
-            st.error(f"No FDA label found for “{name}”. Check the spelling or try the generic name.")
-            info = None
-        except Exception as e:
-            st.error(f"Couldn't reach the FDA label service: {e}")
-            info = None
 
-        if info:
-            st.subheader(display_name(info))
-            st.caption(f"{info['generic_name'] or ''} · {info['manufacturer'] or 'Unknown maker'}")
-            if "Boxed warning" in info["sections"]:
-                st.error("**Boxed warning (the FDA's strongest warning):** " + info["sections"]["Boxed warning"])
+@app.get("/", include_in_schema=False)
+def home():
+    return FileResponse(PUBLIC / "index.html")
 
-            if name not in st.session_state.meds:
-                if st.button(f"Add {display_name(info)} to my medicines"):
-                    st.session_state.meds.append(name)
-                    save_meds(st.session_state.meds)
-                    st.rerun()
-            else:
-                st.caption("✓ In your medicines")
 
-            try:
-                with st.spinner("Explaining the label..."):
-                    st.markdown(get_explanation(name, language))
-            except Exception as e:
-                st.error(f"Couldn't get an explanation: {e}")
+@app.get("/api/config")
+def config():
+    return {"access_code_required": bool(os.environ.get("APP_ACCESS_CODE")), "languages": sorted(LANGUAGES)}
 
-            with st.expander("Read the official label text"):
-                for title, text in info["sections"].items():
-                    st.markdown(f"**{title}**")
-                    st.write(text)
 
-with my_meds:
-    meds = st.session_state.meds
-    if not meds:
-        st.info("No medicines yet. Look one up and tap “Add to my medicines”.")
-    for med in list(meds):
-        left, right = st.columns([4, 1])
-        left.write(med)
-        if right.button("Remove", key=f"remove-{med}"):
-            meds.remove(med)
-            save_meds(meds)
-            st.rerun()
+@app.get("/api/label")
+def label(name: str):
+    info = lookup(name)
+    return {**info, "display_name": display_name(info)}
 
-    if len(meds) >= 2 and st.button("Check my medicines together", type="primary"):
-        try:
-            with st.spinner("Comparing the labels..."):
-                st.markdown(check_interactions([get_info(m) for m in meds], language=language))
-        except Exception as e:
-            st.error(f"Couldn't check interactions: {e}")
 
-st.divider()
-st.caption("Label Lens summarizes official FDA labels and isn't medical advice. Always check with a pharmacist or doctor.")
+@app.post("/api/explain", dependencies=[Depends(check_access)])
+def explain(req: ExplainRequest):
+    info = lookup(req.name)
+    try:
+        return {"explanation": explain_label(info, language=check_language(req.language))}
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(502, "Couldn't get an explanation right now. Try again in a moment.")
+
+
+@app.post("/api/photo", dependencies=[Depends(check_access)])
+def photo(req: PhotoRequest):
+    if req.media_type not in {"image/jpeg", "image/png", "image/webp"}:
+        raise HTTPException(400, "Use a JPG, PNG or WEBP photo.")
+    try:
+        image = base64.b64decode(req.image, validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(400, "That photo couldn't be read.")
+    if len(image) > MAX_IMAGE_BYTES:
+        raise HTTPException(413, "That photo is too large.")
+    try:
+        found = read_packaging(image, req.media_type)
+    except Exception:
+        raise HTTPException(502, "Couldn't read the photo right now. Try again in a moment.")
+    if not found["found"] or not (found["name"] or found["active_ingredient"]):
+        raise HTTPException(422, "Couldn't make out a medicine name. Try a sharper photo of the front of the box.")
+    return found
+
+
+@app.post("/api/interactions", dependencies=[Depends(check_access)])
+def interactions(req: InteractionsRequest):
+    infos = [lookup(name) for name in req.names]
+    try:
+        return {"result": check_interactions(infos, language=check_language(req.language))}
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(502, "Couldn't check your medicines right now. Try again in a moment.")
+
+
+# On Vercel the CDN serves public/ directly. Locally, serve it from here.
+if not os.environ.get("VERCEL"):
+    app.mount("/", StaticFiles(directory=PUBLIC), name="public")
