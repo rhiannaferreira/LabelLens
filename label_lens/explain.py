@@ -1,41 +1,71 @@
-"""Ask an AI model to explain a drug label in plain language."""
+"""Ask an AI model to explain drug labels in plain language."""
 
 import anthropic
 
-MODEL = "claude-opus-5-5"
+from label_lens.model import ask
 
-SYSTEM_PROMPT = """You explain official FDA drug labels to ordinary people, such as a patient,
-a parent, or someone caring for an older relative. Use only what the label says; never add
-facts, doses, or advice that aren't in it. Write at about an 8th-grade reading level, in short
-sentences, with no medical jargon (or explain a term the first time you use it).
+STYLE = """Use only what the label text says; never add facts, doses, or advice that aren't in it.
+Write at about an 8th-grade reading level, in short sentences, with no medical jargon (or explain
+a term the first time you use it)."""
 
-Structure the answer with these headings, skipping any the label doesn't cover:
+EXPLAIN_PROMPT = f"""You explain official FDA drug labels to ordinary people, such as a patient,
+a parent, or someone caring for an older relative. {STYLE}
+
+Structure the answer with these Markdown headings, skipping any the label doesn't cover:
 What it's for, How to take it, Don't take it if, Watch out for, Mixing with other medicines,
 When to call a doctor.
 
 End with one line reminding the reader to check with their pharmacist or doctor, because this
 is a summary of the label and not medical advice."""
 
+INTERACTIONS_PROMPT = f"""You check a person's list of medicines against the official FDA labels
+for those medicines. {STYLE}
+
+Report only combinations that one of the labels warns about, either by name or by a group the
+label names (for example "blood thinners" or "other NSAIDs"). For each one, say which medicines,
+what the label says could happen, and quote the label's words in quotation marks. If the labels
+warn about none of the combinations, say so plainly. Don't speculate about interactions the
+labels don't mention.
+
+End with one line telling the reader to show the list to their pharmacist, because labels don't
+cover every interaction."""
+
+# Label sections that talk about combining medicines or who shouldn't take them.
+INTERACTION_SECTIONS = (
+    "Boxed warning",
+    "Do not use if",
+    "Do not use",
+    "Warnings",
+    "Ask a doctor before use",
+    "Ask a doctor or pharmacist before use",
+    "Drug interactions",
+)
+
+
+def display_name(info: dict) -> str:
+    return info["brand_name"] or info["generic_name"] or "this medicine"
+
+
+def label_text(info: dict, only: tuple[str, ...] | None = None) -> str:
+    return "\n\n".join(
+        f"## {title}\n{text}" for title, text in info["sections"].items() if only is None or title in only
+    )
+
 
 def explain_label(info: dict, language: str = "English", client: anthropic.Anthropic | None = None) -> str:
-    client = client or anthropic.Anthropic()
-    name = info["brand_name"] or info["generic_name"] or "this medicine"
-    label_text = "\n\n".join(f"## {title}\n{text}" for title, text in info["sections"].items())
     prompt = (
-        f"Explain this label for {name} ({info['generic_name'] or 'generic name unknown'}). "
-        f"Write the explanation in {language}.\n\n<label>\n{label_text}\n</label>"
+        f"Explain this label for {display_name(info)} ({info['generic_name'] or 'generic name unknown'}). "
+        f"Write the explanation in {language}.\n\n<label>\n{label_text(info)}\n</label>"
     )
+    return ask(prompt, EXPLAIN_PROMPT, client=client)
 
-    response = client.beta.messages.create(
-        model=MODEL,
-        max_tokens=16000,
-        system=SYSTEM_PROMPT,
-        output_config={"effort": "medium"},
-        # If a safety check declines the request, the API retries it on a fallback model.
-        betas=["server-side-fallback-2026-07-01"],
-        fallbacks="default",
-        messages=[{"role": "user", "content": prompt}],
+
+def check_interactions(infos: list[dict], language: str = "English", client: anthropic.Anthropic | None = None) -> str:
+    if len(infos) < 2:
+        raise ValueError("Add at least two medicines to check them against each other.")
+    names = ", ".join(f"{display_name(i)} ({i['generic_name'] or '?'})" for i in infos)
+    labels = "\n\n".join(
+        f'<label medicine="{display_name(i)}">\n{label_text(i, INTERACTION_SECTIONS)}\n</label>' for i in infos
     )
-    if response.stop_reason == "refusal":
-        raise RuntimeError("The model declined to explain this label.")
-    return "".join(block.text for block in response.content if block.type == "text")
+    prompt = f"My medicines: {names}. Answer in {language}.\n\n{labels}"
+    return ask(prompt, INTERACTIONS_PROMPT, client=client)

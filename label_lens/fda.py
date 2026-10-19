@@ -54,6 +54,19 @@ def label_info(label: dict) -> dict:
     for field, title in SECTIONS.items():
         if field in label and title not in sections:
             sections[title] = "\n".join(label[field]).strip()
+
+    # On over-the-counter labels, "Warnings" often holds the whole warnings box, repeating
+    # sections such as "Do not use" word for word. Cut those repeats out of it.
+    if "Warnings" in sections:
+        warnings = sections["Warnings"]
+        for title, text in sections.items():
+            if title != "Warnings" and text:
+                warnings = warnings.replace(text, "")
+        warnings = " ".join(warnings.split())
+        if warnings and warnings != "Warnings":
+            sections["Warnings"] = warnings
+        else:
+            del sections["Warnings"]
     return {
         "brand_name": ", ".join(openfda.get("brand_name", [])) or None,
         "generic_name": ", ".join(openfda.get("generic_name", [])) or None,
